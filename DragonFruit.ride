@@ -1,0 +1,426 @@
+{-# STDLIB_VERSION 3 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+let dividendProgramAddress = addressFromPublicKey(fromBase58String("4YzSQxjz8tahQ62bgcKLxoh9424EYDiYdZUzUtQVCzks"))
+let gamePublicKey = fromBase58String("2o1waDCX67ArC4iV4WWHa41MHbCKS4na7KWDJmcKNAQ3")
+let referralProgramAddress = addressFromPublicKey(fromBase58String("1"))
+
+let rsaPublicKey1 = fromBase64String("MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAOkiuz/BV4EjoxGhTmNCbt2TgkbSPH/w69b3F1rKmD61JiPXvvF8L2pI9xOYcW4FmoEZVHlRQtAlaJykl3+rsrECAwEAAQ==")
+let rsaPublicKey2 = fromBase64String("MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJnXzbM/V2sDV1ULbPSOlHkldOTWRrHi5fxIkBmuevrClMPVH7rqccwirDNcMdIdwXHI9Adhj9FWjwGIwfU/K6MCAwEAAQ==")
+let rsaPublicKey3 = fromBase64String("MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAORDevy0r4kzLqOySloB63Huv2e4zeHKHjCsy5vtFKmWZbXJa8gZYt4+EklFIo1K9oqu5BAPVfJ3FOzs2U1A+g0CAwEAAQ==")
+
+let drum1 = ["2", "1", "3", "5", "7", "3", "3", "1", "4", "1", "3", "5", "2", "4", "2", "6", "5", "2", "1", "4"]
+let drum2 = ["4", "2", "3", "1", "6", "4", "2", "1", "4", "2", "1", "6", "3", "1", "2", "5", "1", "5", "3", "7"]
+let drum3 = ["3", "2", "7", "4", "1", "6", "4", "2", "3", "1", "4", "1", "5", "5", "1", "3", "7", "1", "2", "6"]
+
+let gameTimeFrame = 2880
+let commission = 500000
+
+let stateAcc = "Accepted"
+let stateWin = "Win"
+let stateTimeout = "WinByTimeout"
+let stateLose = "Lose"
+
+let wavesId = unit
+let btcId = base58'8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS'
+let ethId = base58'474jTeYx2r2Va35794tCScAXWJG9hU2HcgxzMowaZUnu'
+let ltcId = base58'HZk1mbfuJpmxU1Fs4AX5MWLVYtctsNcg6e2C6VKqK8zk'
+let westId = base58'4LHHvYGNKJUg5hj65aGD5vgScvCBmLpdRFtjokvCjSL8'
+let wctId = base58'DHgwrRvVyqJsepd32YbBqUeDH4GJ1N984X8QoekjgH8J'
+let usdtId = base58'34N9YcEETLWn93qYQ64EsP1x89tSruJU44RrEMSXXEPJ'
+let usdnId = base58'DG2xFkPdDwKUoBkzGAhQtLpSGzfXLiCYPEzeKH2Ad24p'
+
+let wavesMinAmt = 20000000
+let wavesMaxAmt = wavesMinAmt * 10
+let btcMinAmt = 2000
+let btcMaxAmt = btcMinAmt * 10
+let ethMinAmt = 100000
+let ethMaxAmt = ethMinAmt * 10
+let ltcMinAmt = 200000
+let ltcMaxAmt = ltcMinAmt * 10
+let wctMinAmt = 200000000
+let wctMaxAmt = wctMinAmt * 10
+let westMinAmt = 200000000
+let westMaxAmt = westMinAmt * 10
+let usdtMinAmt = 200000
+let usdtMaxAmt = usdtMinAmt * 10
+let usdnMinAmt = 200000
+let usdnMaxAmt = usdnMinAmt * 10
+
+func pmtAmtCheck (pmtAssetId:String, betAmount:Int) = {
+    if pmtAssetId == "WAVES" then {
+        if (betAmount >= wavesMinAmt) && (betAmount <= wavesMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "BTC" then {
+        if (betAmount >= btcMinAmt) && (betAmount <= btcMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "ETH" then {
+        if (betAmount >= ethMinAmt) && (betAmount <= ethMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "LTC" then {
+        if (betAmount >= ltcMinAmt) && (betAmount <= ltcMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "WEST" then {
+        if (betAmount >= westMinAmt) && (betAmount <= westMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "USDT" then {
+        if (betAmount >= usdtMinAmt) && (betAmount <= usdtMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else if pmtAssetId == "USDN" then {
+        if (betAmount >= usdnMinAmt) && (betAmount <= usdnMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+    else {
+        if (betAmount >= wctMinAmt) && (betAmount <= wctMaxAmt)
+            then true
+        else throw("Bet amount is not in range")
+    }
+}
+func getDataList (gameId:String) = {
+    let getDataString = getString(this, gameId + "_GameId")
+    let a = match getDataString {
+        case a:String => a
+        case _ => throw("GameId was not found")
+    }
+    split(a, "_") 
+}
+func rsaToInt (gameId:String, rsaSign:ByteVector, rsaPublicKey:ByteVector) = {
+    let rsaCheck = rsaVerify(SHA256, toBytes(gameId), rsaSign, rsaPublicKey)
+    if rsaCheck
+        then {
+            (toInt(sha256(rsaSign)) % 19)
+        }
+    else throw("Rsa Signature is invalid")
+}
+func increaseReservedBalance (pmtAmt:Int, pmtAssetName:String, assetId58:ByteVector|Unit) = {
+    let currentReservedBalance = {
+        let valueReservedBalance = getInteger(this, pmtAssetName + "_Reserved")
+        match valueReservedBalance {
+            case a:Int => a
+            case _ => 0
+        }
+    }
+    let newReservedBalance = currentReservedBalance + (pmtAmt * 260)
+    if (assetBalance(this, assetId58) >= newReservedBalance)
+        then newReservedBalance
+    else throw("Bet was rejected. Insufficient funds on game account.")
+}
+func decreaseReservedBalance (betAmt:Int, assetId:String) = {
+    let valueReservedBalance = getInteger(this, assetId + "_Reserved")
+    let extractReservedBalance = match valueReservedBalance {
+        case a:Int => a
+        case _ => 0
+    }
+    let decreaseReservedBalance = extractReservedBalance - (betAmt * 260)
+    if (decreaseReservedBalance >= 0)
+        then decreaseReservedBalance
+    else throw("Reserved balance couldn't be less than 0")
+}
+func drumIntToString (drumInt:Int) = {
+    if drumInt < 10 then "0" + toString(drumInt)
+    else toString(drumInt)
+}
+func defineMultiplier (threeInARow:String, twoInARow:String) = {
+    if threeInARow == "777" then 2600
+    else if threeInARow == "666" then 1300
+    else if threeInARow == "555" then 450
+    else if threeInARow == "444" then 200
+    else if threeInARow == "333" then 150
+    else if threeInARow == "222" then 110
+    else if threeInARow == "111" then 50
+    else if twoInARow == "77" then 270
+    else if twoInARow == "66" then 130
+    else if twoInARow == "55" then 45
+    else if twoInARow == "44" then 30
+    else if twoInARow == "33" then 20
+    else if twoInARow == "22" then 17
+    else if twoInARow == "11" then 13
+    else 0
+}
+func assetNameToBase58 (assetName:String) = {
+        if assetName == "WAVES" then wavesId
+        else if assetName == "BTC" then btcId
+        else if assetName == "ETH" then ethId
+        else if assetName == "LTC" then ltcId
+        else if assetName == "WEST" then westId
+        else if assetName == "WCT" then wctId
+        else if assetName == "USDT" then usdtId
+        else if assetName == "USDN" then usdnId
+        else throw("Asset name is incorrect")
+}
+func assetBase58ToName (assetId:ByteVector|Unit) = {
+    if !isDefined(assetId) then "WAVES"
+    else if (assetId == btcId) then "BTC"
+    else if (assetId == ethId) then "ETH"
+    else if (assetId == ltcId) then "LTC"
+    else if (assetId == westId) then "WEST"
+    else if (assetId == wctId) then "WCT"
+    else if (assetId == usdtId) then "USDT"
+    else if (assetId == usdnId) then "USDN"
+    else throw("AssetId is incorrect")
+}
+## Referral program functions
+func getReferAddress (address:String) = {
+    let referAddress = getString(referralProgramAddress, address + "_Refer")
+    match referAddress {
+        case a:String => a
+        case _ => "None"
+    }
+}
+func setNewRefReward (referAddress:String, betAmt:Int, winAmt:Int) = {
+    if referAddress == "None" then 0
+    else {
+        let valueRefReward = getInteger(this, referAddress + "_RefReward")
+        let currentRefReward = match valueRefReward {
+            case a:Int => a
+            case _ => throw("Couldn't find refer reward for this address")
+        }
+        let refKoeff = {
+            let a = match getInteger(this, referAddress + "_GamesPlayedByRef") {
+                case a:Int => a
+                case _ => throw("Couldn't find games played number by referrals for this address")
+            }
+            if a > 10000 then 30
+            else if a > 1000 then 20
+            else if a > 100 then 10
+            else 5
+        }
+        let gameIncome = betAmt - winAmt
+        let rewardForThisGame = gameIncome * refKoeff / 100
+        currentRefReward + rewardForThisGame
+    }
+}
+func setNewGamesPlayedNum (address:String) = {
+    let valueGamesPlayedNum = getInteger(this, address + "_GamesPlayed")
+    let currentGamesPlayedNum = match valueGamesPlayedNum {
+        case a:Int => a
+        case _ => 0
+    }
+    currentGamesPlayedNum + 1
+}
+## dividend program functions
+func getCurrentIncome (assetName:String) = {
+    let val = getInteger(this, assetName + "_Income")
+    match val {
+        case a:Int => a
+        case _ => 0
+    }
+}
+func callerIsDepositOwner (assetName:String, callerPublicKey:String) = {
+    let depositOwner = getString(dividendProgramAddress, assetName + "_DepositOwner")
+    if callerPublicKey == depositOwner 
+        then callerPublicKey 
+    else throw("Only deposit owner can withdrawal deposit")
+}
+func getDepositData (assetName:String, keySuffix:String) = {
+    let key = assetName + keySuffix
+    let val = getInteger(dividendProgramAddress, key)
+    match val {
+        case a:Int => a
+        case _ => throw("Couldn't find dividend program start height")
+    }
+}
+
+@Callable(i)
+func makeBet () = {
+    let pmt = extract(i.payment)
+    let betAmount = pmt.amount - commission
+    let assetId = pmt.assetId
+    
+    let gameId = toBase58String(i.transactionId)
+    let playerAddress = extract(i.caller)
+    let pmtAssetName = assetBase58ToName(assetId)
+    let setReservedBalance = increaseReservedBalance(betAmount, pmtAssetName, pmt.assetId)
+    let pmtAmtCorrect = pmtAmtCheck(pmtAssetName, betAmount)
+    if (pmtAmtCorrect)
+        then {
+            let dataString = stateAcc + "_" + toString(playerAddress)  + "_" + toString(betAmount) + "_" + pmtAssetName + "_" + toString(height)
+            WriteSet([
+                DataEntry(gameId + "_GameId", dataString),
+                DataEntry(pmtAssetName + "_Reserved", setReservedBalance)
+            ])
+        }
+    else throw("assetId is incorrect")
+}
+
+@Callable(i)
+func playGame (gameId:String, rsaSign1:ByteVector, rsaSign2:ByteVector, rsaSign3:ByteVector) = {
+    let dataList = getDataList(gameId)
+    let gameState = getElement(dataList, 0)
+    let playerAddress = (getElement(dataList, 1))
+    let betAmt = parseIntValue(getElement(dataList, 2))
+    let assetName = getElement(dataList, 3)
+    let gameStart = parseIntValue(getElement(dataList, 4))
+
+    let assetId58 = assetNameToBase58(assetName)
+    let setReservedBalance = decreaseReservedBalance(betAmt, assetName)
+    
+    let drum1Int = rsaToInt(gameId, rsaSign1, rsaPublicKey1)
+    let drum2Int = rsaToInt(gameId, rsaSign2, rsaPublicKey2)
+    let drum3Int = rsaToInt(gameId, rsaSign3, rsaPublicKey3)
+
+    let twoInARow = getElement(drum1, drum1Int) + getElement(drum2, drum2Int)
+    let threeInARow = twoInARow + getElement(drum3, drum3Int)
+
+    let droppedElementsString = drumIntToString(drum1Int) + drumIntToString(drum2Int) + drumIntToString(drum3Int)
+    let winAmt = betAmt * defineMultiplier(threeInARow, twoInARow) / 10
+
+    let referAddress = getReferAddress(playerAddress)
+    let referReward = setNewRefReward(referAddress, betAmt, winAmt)
+
+
+    if (gameState == stateAcc) then {
+        if (height - gameStart < gameTimeFrame) then {
+            if (winAmt == 0) then {
+                let availableDividends = {
+                    let dividends = getCurrentIncome(assetName) + betAmt
+                    if dividends > 0 then dividends else 0
+                }
+                let income = {
+                    let dividends = getCurrentIncome(assetName) + betAmt
+                    if dividends > 0 then 0 else dividends
+                }
+                
+                if referAddress == "None" then {
+                    ScriptResult(
+                        WriteSet([
+                            DataEntry(gameId + "_GameId", stateLose + "_" + getElement(dataList, 1) + "_" + getElement(dataList, 2) + "_" + getElement(dataList, 3) + "_" + toString(height) + "_" + toString(winAmt) + "_" + threeInARow + "_" + droppedElementsString),
+                            DataEntry(assetName + "_Reserved", setReservedBalance),
+                            DataEntry(assetName + "_Income", income)
+                            ## ,
+                            ## DataEntry(playerAddress + "_GamesPlayed", setNewGamesPlayedNum(referAddress))
+                        ]),
+                        TransferSet([
+                            ScriptTransfer(dividendProgramAddress, availableDividends, assetId58) 
+                        ])
+                    )
+                }
+                else {
+                    ScriptResult(
+                        WriteSet([
+                            DataEntry(gameId + "_GameId", stateLose + "_" + getElement(dataList, 1) + "_" + getElement(dataList, 2) + "_" + getElement(dataList, 3) + "_" + toString(height) + "_" + toString(winAmt) + "_" + threeInARow + "_" + droppedElementsString),
+                            DataEntry(assetName + "_Reserved", setReservedBalance),
+                            DataEntry(assetName + "_Income", income)
+                            ## ,
+                            ## DataEntry(referAddress + "_GamesPlayedByRef", setNewGamesPlayedNum(referAddress)),
+                            ## DataEntry(referAddress + "_ReferReward", referReward)
+                        ]),
+                        TransferSet([
+                            ScriptTransfer(dividendProgramAddress, availableDividends, assetId58) 
+                        ])
+                    )
+                }
+
+            }
+            else {
+                ScriptResult(
+                    WriteSet([
+                        DataEntry(gameId + "_GameId", stateWin + "_" + getElement(dataList, 1) + "_" + getElement(dataList, 2) + "_" + getElement(dataList, 3) + "_" + toString(height) + "_" + toString(winAmt) + "_" + threeInARow + "_" + droppedElementsString),
+                        DataEntry(assetName + "_Reserved", setReservedBalance),
+                        DataEntry(assetName + "_Income", getCurrentIncome(assetName) - winAmt)
+                        ## ,
+                        ## DataEntry(referAddress + "_GamesPlayedByRef", setNewGamesPlayedNum(referAddress))
+                    ]),
+                    TransferSet([
+                        ScriptTransfer(addressFromStringValue(playerAddress), winAmt, assetId58)
+                    ])
+                )
+            } 
+        }
+        else {
+            ScriptResult(
+                WriteSet([
+                    DataEntry(gameId + "_GameId", stateTimeout + "_" + getElement(dataList, 1) + "_" + getElement(dataList, 2) + "_" + getElement(dataList, 3) + "_" + toString(height) + "_" + toString(betAmt * 2) + "_" + "000" + "_" + "000000"),
+                    DataEntry(assetName + "_Reserved", setReservedBalance),
+                    DataEntry(assetName + "_Income", getCurrentIncome(assetName) - (betAmt * 2))
+                    ## ,
+                    ## DataEntry(referAddress + "_GamesPlayedByRef", setNewGamesPlayedNum(referAddress))
+                ]),
+                TransferSet([
+                    ScriptTransfer(addressFromStringValue(playerAddress), betAmt * 2, assetId58)
+                ])
+            )
+        }
+    }
+    else throw("Game state is incorrect")
+}
+
+@Callable(i)
+func withdrawDeposit (assetName:String) = {
+    let assetId58 = assetNameToBase58(assetName)
+    let callerPub =  callerIsDepositOwner(assetName, toBase58String(i.callerPublicKey))
+    let dividendStartHeight = getDepositData(assetName, "_DepositStartBlock")
+    let depositDuration = getDepositData(assetName, "_DepositDurationBlock")
+    let depositAmount = getDepositData(assetName, "_DepositAmount")
+
+    if height - dividendStartHeight >= depositDuration 
+        then {
+            ScriptResult(
+                WriteSet([
+                    DataEntry(assetName + "_DepositWithdrawTransactionId", i.transactionId)
+                ]),
+                TransferSet([
+                    ScriptTransfer(addressFromPublicKey(fromBase58String(callerPub)), depositAmount, assetId58)
+                ])
+            )
+        }
+    else throw("Deposit time is not over. " + toString(height - (dividendStartHeight + depositDuration)) + " blocks left.")
+}
+
+## @Callable(i)
+## func withdrawRefReward (address:String, assetName:String) = {
+##     let assetId58 = assetNameToBase58(assetName)
+##     let rewardAmountChecked = {
+##         let rewardAmount = match getInteger(this, address + "_ReferReward") {
+##             case a:Int => a
+##             case _ => throw("Couldn't find referral reward for this address")
+##         }
+##         let rewardAmountCorrect = if assetId58 == wavesId
+##             then (if rewardAmount > 100000000 then true else false)
+##         else if assetId58 == btcId
+##             then (if rewardAmount > 100000000 then true else false)
+##         else if assetId58 == ethId
+##             then (if rewardAmount > 100000000 then true else false)
+##         else if assetId58 == westId
+##             then (if rewardAmount > 100000000 then true else false)
+##         else if assetId58 == wctId
+##             then (if rewardAmount > 100000000 then true else false)
+##         else (if rewardAmount > 100000000 then true else false)
+##         
+##         if rewardAmountCorrect then rewardAmount else throw("Reward Amount is too low to withdraw")
+##     }
+##     ScriptResult(
+##         WriteSet([
+##             DataEntry(address + "_ReferReward", 0)
+##         ]),
+##         TransferSet([
+##             ScriptTransfer(addressFromStringValue(address), rewardAmountChecked, assetId58)
+##         ])
+##     )
+## }
+
+@Verifier(tx)
+func verify() = {
+    if sigVerify(tx.bodyBytes, tx.proofs[0], gamePublicKey)
+        then {
+            match tx {
+                case sstx:SetScriptTransaction => true
+                case _ => false
+            }
+        }
+    else false
+}
